@@ -17,14 +17,21 @@
 package org.jetbrains.kotlin.load.java.components
 
 import org.jetbrains.kotlin.container.DefaultImplementation
+import org.jetbrains.kotlin.container.PlatformExtensionsClashResolver
+import org.jetbrains.kotlin.container.PlatformSpecificExtension
 import org.jetbrains.kotlin.load.java.descriptors.JavaClassDescriptor
 import org.jetbrains.kotlin.types.SimpleType
 
 @DefaultImplementation(impl = SamConversionResolver.Empty::class)
-interface SamConversionResolver {
+interface SamConversionResolver : PlatformSpecificExtension<SamConversionResolver> {
     object Empty : SamConversionResolver {
         override fun resolveFunctionTypeIfSamInterface(classDescriptor: JavaClassDescriptor): SimpleType? = null
     }
 
     fun resolveFunctionTypeIfSamInterface(classDescriptor: JavaClassDescriptor): SimpleType?
 }
+
+class SamConversionResolverClashesResolver : PlatformExtensionsClashResolver.FallbackToDefault<SamConversionResolver>(
+    SamConversionResolver.Empty,
+    SamConversionResolver::class.java
+)

@@ -6,15 +6,14 @@
 package org.jetbrains.kotlin.resolve
 
 import org.jetbrains.kotlin.builtins.PlatformToKotlinClassMap
-import org.jetbrains.kotlin.container.StorageComponentContainer
-import org.jetbrains.kotlin.container.composeContainer
-import org.jetbrains.kotlin.container.useImpl
-import org.jetbrains.kotlin.container.useInstance
-import org.jetbrains.kotlin.resolve.calls.checkers.*
 import org.jetbrains.kotlin.container.*
+import org.jetbrains.kotlin.resolve.calls.checkers.*
+import org.jetbrains.kotlin.resolve.calls.results.TypeSpecificityComparatorClashesResolver
 import org.jetbrains.kotlin.resolve.checkers.*
 import org.jetbrains.kotlin.resolve.lazy.DelegationFilter
 import org.jetbrains.kotlin.types.DynamicTypesSettings
+import org.jetbrains.kotlin.types.DynamicTypesSettingsClashesResolver
+import org.jetbrains.kotlin.types.expressions.FunctionWithBigAritySupportClashesResolver
 
 private val DEFAULT_DECLARATION_CHECKERS = listOf(
     DataClassDeclarationChecker(),
@@ -55,6 +54,13 @@ private val DEFAULT_CLASSIFIER_USAGE_CHECKERS = listOf(
 )
 private val DEFAULT_ANNOTATION_CHECKERS = listOf<AdditionalAnnotationChecker>()
 
+private val DEFAULT_CLASH_RESOLVERS = listOf<PlatformExtensionsClashResolver<*>>(
+    IdentifierCheckerClashesResolver(),
+    TypeSpecificityComparatorClashesResolver(),
+    DynamicTypesSettingsClashesResolver(),
+    FunctionWithBigAritySupportClashesResolver()
+)
+
 
 abstract class PlatformConfiguratorBase(
     private val dynamicTypesSettings: DynamicTypesSettings? = null,
@@ -63,6 +69,7 @@ abstract class PlatformConfiguratorBase(
     additionalTypeCheckers: List<AdditionalTypeChecker> = emptyList(),
     additionalClassifierUsageCheckers: List<ClassifierUsageChecker> = emptyList(),
     additionalAnnotationCheckers: List<AdditionalAnnotationChecker> = emptyList(),
+    additionalClashResolvers: List<PlatformExtensionsClashResolver<*>> = emptyList(),
     private val identifierChecker: IdentifierChecker? = null,
     private val overloadFilter: OverloadFilter? = null,
     private val platformToKotlinClassMap: PlatformToKotlinClassMap? = null,
@@ -76,6 +83,7 @@ abstract class PlatformConfiguratorBase(
     private val classifierUsageCheckers: List<ClassifierUsageChecker> =
         DEFAULT_CLASSIFIER_USAGE_CHECKERS + additionalClassifierUsageCheckers
     private val annotationCheckers: List<AdditionalAnnotationChecker> = DEFAULT_ANNOTATION_CHECKERS + additionalAnnotationCheckers
+    private val clashResolvers: List<PlatformExtensionsClashResolver<*>> = DEFAULT_CLASH_RESOLVERS + additionalClashResolvers
 
     override val platformSpecificContainer = composeContainer(this::class.java.simpleName) {
         useInstanceIfNotNull(dynamicTypesSettings)
@@ -84,6 +92,7 @@ abstract class PlatformConfiguratorBase(
         typeCheckers.forEach { useInstance(it) }
         classifierUsageCheckers.forEach { useInstance(it) }
         annotationCheckers.forEach { useInstance(it) }
+        clashResolvers.forEach { useClashResolver(it) }
         useInstanceIfNotNull(identifierChecker)
         useInstanceIfNotNull(overloadFilter)
         useInstanceIfNotNull(platformToKotlinClassMap)
