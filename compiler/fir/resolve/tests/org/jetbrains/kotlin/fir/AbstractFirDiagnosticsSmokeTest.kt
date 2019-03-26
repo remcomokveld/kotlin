@@ -148,7 +148,7 @@ abstract class AbstractFirDiagnosticsSmokeTest : BaseDiagnosticsTest() {
     }
 
     class BuiltInModuleInfo(override val name: Name) : ModuleInfo {
-        override val platform: TargetPlatform?
+        override val platform: TargetPlatform
             get() = JvmPlatforms.defaultJvmPlatform
 
         override val compilerServices: PlatformDependentCompilerServices
@@ -160,7 +160,7 @@ abstract class AbstractFirDiagnosticsSmokeTest : BaseDiagnosticsTest() {
     }
 
     protected class TestModuleInfo(override val name: Name) : ModuleInfo {
-        override val platform: TargetPlatform?
+        override val platform: TargetPlatform
             get() = JvmPlatforms.defaultJvmPlatform
 
         override val compilerServices: PlatformDependentCompilerServices
