@@ -23,7 +23,6 @@ import org.jetbrains.kotlin.analyzer.*
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.platform.TargetPlatformVersion
-import org.jetbrains.kotlin.container.StorageComponentContainer
 import org.jetbrains.kotlin.container.get
 import org.jetbrains.kotlin.context.ModuleContext
 import org.jetbrains.kotlin.context.ProjectContext
@@ -69,8 +68,8 @@ object CommonResolverForModuleFactory : ResolverForModuleFactory() {
         override val platform: TargetPlatform
             get() = CommonPlatforms.defaultCommonPlatform
 
-        override val compilerServices: PlatformDependentCompilerServices
-            get() = CommonPlatformCompilerServices
+        override val analyzerServices: PlatformDependentAnalyzerServices
+            get() = CommonPlatformAnalyzerServices
     }
 
     fun analyzeFiles(
@@ -138,7 +137,7 @@ object CommonResolverForModuleFactory : ResolverForModuleFactory() {
         val trace = CodeAnalyzerInitializer.getInstance(project).createTrace()
         val container = createContainerToResolveCommonCode(
             moduleContext, trace, declarationProviderFactory, moduleContentScope, targetEnvironment, metadataPartProvider,
-            languageVersionSettings, CommonPlatforms.defaultCommonPlatform, CommonPlatformCompilerServices
+            languageVersionSettings, CommonPlatforms.defaultCommonPlatform, CommonPlatformAnalyzerServices
         )
 
         val packageFragmentProviders = listOf(

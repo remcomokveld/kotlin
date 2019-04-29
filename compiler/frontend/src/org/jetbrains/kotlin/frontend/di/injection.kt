@@ -17,6 +17,8 @@
 package org.jetbrains.kotlin.frontend.di
 
 import org.jetbrains.kotlin.platform.TargetPlatform
+import com.intellij.openapi.components.ServiceManager
+import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.container.StorageComponentContainer
 import org.jetbrains.kotlin.container.useImpl
@@ -27,6 +29,7 @@ import org.jetbrains.kotlin.extensions.StorageComponentContainerContributor
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.platform.TargetPlatformVersion
+import org.jetbrains.kotlin.load.kotlin.MetadataFinderFactory
 import org.jetbrains.kotlin.resolve.*
 import org.jetbrains.kotlin.resolve.calls.components.ClassicTypeSystemContextForCS
 import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowValueFactoryImpl
@@ -34,6 +37,8 @@ import org.jetbrains.kotlin.resolve.calls.tower.KotlinResolutionStatelessCallbac
 import org.jetbrains.kotlin.resolve.checkers.ExperimentalUsageChecker
 import org.jetbrains.kotlin.resolve.lazy.*
 import org.jetbrains.kotlin.resolve.lazy.declarations.DeclarationProviderFactory
+import org.jetbrains.kotlin.serialization.deserialization.MetadataPackageFragmentProvider
+import org.jetbrains.kotlin.serialization.deserialization.MetadataPartProvider
 import org.jetbrains.kotlin.types.expressions.DeclarationScopeProviderForLocalClassifierAnalyzer
 import org.jetbrains.kotlin.types.expressions.LocalClassDescriptorHolder
 import org.jetbrains.kotlin.types.expressions.LocalLazyDeclarationResolver
@@ -197,9 +202,9 @@ fun createContainerToResolveCommonCode(
     metadataPartProvider: MetadataPartProvider,
     languageVersionSettings: LanguageVersionSettings,
     platform: TargetPlatform,
-    compilerServices: PlatformDependentAnalyzerServices
-): StorageComponentContainer = createContainer("ResolveCommonCode", compilerServices) {
-    configureModule(moduleContext, platform, compilerServices, bindingTrace, languageVersionSettings)
+    analyzerServices: PlatformDependentAnalyzerServices
+): StorageComponentContainer = createContainer("ResolveCommonCode", analyzerServices) {
+    configureModule(moduleContext, platform, analyzerServices, bindingTrace, languageVersionSettings)
 
     useInstance(moduleContentScope)
     useInstance(declarationProviderFactory)
