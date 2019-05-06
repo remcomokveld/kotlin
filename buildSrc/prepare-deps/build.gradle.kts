@@ -1,5 +1,8 @@
 @file:Suppress("PropertyName")
 
+import org.gradle.api.internal.attributes.ImmutableAttributes
+import org.gradle.api.publish.internal.versionmapping.VariantVersionMappingStrategyInternal
+import org.gradle.api.publish.internal.versionmapping.VersionMappingStrategyInternal
 import org.gradle.api.publish.ivy.internal.artifact.FileBasedIvyArtifact
 import org.gradle.api.publish.ivy.internal.publication.DefaultIvyConfiguration
 import org.gradle.api.publish.ivy.internal.publication.DefaultIvyPublicationIdentity
@@ -401,7 +404,16 @@ fun writeIvyXml(
                 && !jar.name.startsWith("kotlin-")
                 && (allowAnnotations || jar.name != "annotations.jar") // see comments for [intellijAnnotations] above
 
-    with(IvyDescriptorFileGenerator(DefaultIvyPublicationIdentity(organization, moduleName, version))) {
+    val publicationIdentity = DefaultIvyPublicationIdentity(organization, moduleName, version)
+    val versionMappingStrategyStub = object : VersionMappingStrategyInternal {
+        override fun allVariants(action: Action<in VariantVersionMappingStrategy>?) = Unit
+        override fun usage(usage: String?, action: Action<in VariantVersionMappingStrategy>?) = Unit
+        override fun <T : Any?> variant(attribute: Attribute<T>?, attributeValue: T, action: Action<in VariantVersionMappingStrategy>?) = Unit
+        override fun defaultResolutionConfiguration(usage: String?, defaultConfiguration: String?) = Unit
+        override fun findStrategyForVariant(variantAttributes: ImmutableAttributes?): VariantVersionMappingStrategyInternal = TODO()
+    }
+
+    with(IvyDescriptorFileGenerator(publicationIdentity, false, versionMappingStrategyStub)) {
         addConfiguration(DefaultIvyConfiguration("default"))
         addConfiguration(DefaultIvyConfiguration("sources"))
         artifactDir.listFiles()?.forEach { jarFile ->
