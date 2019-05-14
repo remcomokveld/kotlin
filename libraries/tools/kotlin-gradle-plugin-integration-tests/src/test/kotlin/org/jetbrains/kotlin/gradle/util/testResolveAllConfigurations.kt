@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.gradle.BaseGradleIT
 import kotlin.test.assertTrue
 
 private const val RESOLVE_ALL_CONFIGURATIONS_TASK_NAME = "resolveAllConfigurations"
-private const val UNRESOLVED_MARKER = "<<!>>UNRESOLVED:"
+internal const val UNRESOLVED_MARKER = "<<!>>UNRESOLVED:"
 private val unresolvedConfigurationRegex = "${Regex.escape(UNRESOLVED_MARKER)}(.*)".toRegex()
 
 fun BaseGradleIT.Project.testResolveAllConfigurations(

@@ -5,12 +5,23 @@
 
 package org.jetbrains.kotlin.gradle
 
+import org.jetbrains.kotlin.gradle.util.AGPVersion
+import org.jetbrains.kotlin.gradle.util.UNRESOLVED_MARKER
 import org.jetbrains.kotlin.gradle.util.modify
 import org.jetbrains.kotlin.gradle.util.testResolveAllConfigurations
+import org.jetbrains.kotlin.test.KotlinTestUtils
 import org.junit.Test
+import java.io.File
+import kotlin.test.assertTrue
 
 class VariantAwareDependenciesIT : BaseGradleIT() {
     private val gradleVersion = GradleVersionRequired.AtLeast("4.8")
+
+    override fun defaultBuildOptions() =
+        super.defaultBuildOptions().copy(
+            androidHome = KotlinTestUtils.findAndroidSdk(),
+            androidGradlePluginVersion = AGPVersion.v3_3_2
+        )
 
     @Test
     fun testJvmKtAppResolvesMppLib() {
@@ -265,6 +276,30 @@ class VariantAwareDependenciesIT : BaseGradleIT() {
                 assertContains(">> :compile --> kotlin-script-runtime-${defaultBuildOptions().kotlinVersion}.jar")
             }
         }
+
+    @Test
+    fun testAndroidAndJvmMppWithLibAndApp() = with(Project("new-mpp-android-and-jvm", GradleVersionRequired.AtLeast("5.3"))) {
+        // Instead of directly resolving the configuration, which is not possible with Android projects because of multi-variant
+        // configurations that can't be disambiguated (variant android-classes, variant android-res, variant android-lint etc.), we get the
+        // files from the compile task's classpath, which include a well-defined file collection that is able to resolve the dependency:
+        build("printAndroidAppReleaseCompileClasspath") {
+            val marker = "androidApp release compileClasspath = "
+            val files = output.lines().first { marker in it }.substringAfter(marker).removeSurrounding("[", "]").split(", ")
+            assertTrue {
+                files.any {
+                    it.endsWith("lib/build/intermediates/intermediate-jars/release/classes.jar".replace("/", File.separator))
+                }
+            }
+        }
+
+        // Also check that an Android target may use the JVM one:
+        gradleBuildScript("app").appendText("\nkotlin.android(\"androidApp\").attributes.attribute(complexLibAttribute, 'jvmLib')")
+
+        testResolveAllConfigurations(subproject = "app", excludePredicate = "it.name == 'archives'") {
+            assertNotContains(UNRESOLVED_MARKER)
+            assertContains(">> :app:releaseCompileClasspath --> lib-jvmlib-1.0.0.jar")
+        }
+    }
 
     @Test
     fun testCompileAndRuntimeResolutionOfElementsConfigurations() =

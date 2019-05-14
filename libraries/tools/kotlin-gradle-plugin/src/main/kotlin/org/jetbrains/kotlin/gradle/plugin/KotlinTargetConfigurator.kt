@@ -229,6 +229,7 @@ abstract class AbstractKotlinTargetConfigurator<KotlinTargetType : KotlinTarget>
                 setupAsLocalTargetSpecificConfigurationIfSupported(target)
                 isVisible = false
                 isCanBeResolved = true // Needed for IDE import
+                isCanBeConsumed = false
                 description = "Dependencies for $compilation (deprecated, use '${compilation.implementationConfigurationName} ' instead)."
             }
 
@@ -252,6 +253,7 @@ abstract class AbstractKotlinTargetConfigurator<KotlinTargetType : KotlinTarget>
                 setupAsLocalTargetSpecificConfigurationIfSupported(target)
                 isVisible = false
                 isCanBeResolved = true // Needed for IDE import
+                isCanBeConsumed = false
                 description = "Compile only dependencies for $compilation."
             }
 
@@ -270,6 +272,7 @@ abstract class AbstractKotlinTargetConfigurator<KotlinTargetType : KotlinTarget>
                     extendsFrom(compileConfiguration)
                     isVisible = false
                     isCanBeResolved = true // Needed for IDE import
+                    isCanBeConsumed = false
                     description =
                             "Runtime dependencies for $compilation (deprecated, use '${compilation.runtimeOnlyConfigurationName} ' instead)."
                 }
