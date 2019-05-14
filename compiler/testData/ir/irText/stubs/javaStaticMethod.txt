@@ -3,3 +3,4 @@ FILE fqName:<root> fileName:/javaStaticMethod.kt
     BLOCK_BODY
       RETURN type=kotlin.Nothing from='public final fun test (): kotlin.Unit declared in <root>'
         CALL 'public open fun bar (): kotlin.Unit declared in <root>.J' type=kotlin.Unit origin=null
+          $this: ERROR_CALL 'Unresolved reference: R|/J|' type=<root>.J

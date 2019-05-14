@@ -78,6 +78,7 @@ FILE fqName:<root> fileName:/samConversionsWithSmartCasts.kt
     BLOCK_BODY
       ERROR_CALL 'Unresolved reference: <Unresolved name: run1>#' type=IrErrorType
         CALL 'public open fun id (x: T of <uninitialized parent>?): T of <uninitialized parent>? declared in <root>.J' type=IrErrorType origin=null
+          $this: ERROR_CALL 'Unresolved reference: R|/J|' type=<root>.J
           x: GET_VAR 'a: kotlin.Function0<kotlin.Unit> declared in <root>.test8' type=kotlin.Function0<kotlin.Unit> origin=null
   FUN name:test9 visibility:public modality:FINAL <> () returnType:kotlin.Unit 
     BLOCK_BODY

@@ -3,4 +3,5 @@ FILE fqName:<root> fileName:/implicitCastOnPlatformType.kt
     BLOCK_BODY
       RETURN type=kotlin.Nothing from='public final fun test (): kotlin.String declared in <root>'
         CALL 'public open fun getProperty (key: kotlin.String?): kotlin.String? declared in java.lang.System' type=kotlin.String? origin=null
+          $this: ERROR_CALL 'Unresolved reference: R|java/lang/System|' type=java.lang.System
           key: CONST String type=kotlin.String value="test"
