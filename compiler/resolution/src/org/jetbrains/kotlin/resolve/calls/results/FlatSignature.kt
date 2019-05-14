@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.resolve.calls.results
 
+import org.jetbrains.kotlin.container.DefaultImplementation
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.MemberDescriptor
 import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
@@ -30,6 +31,7 @@ interface SpecificityComparisonCallbacks {
     fun isNonSubtypeNotLessSpecific(specific: KotlinType, general: KotlinType): Boolean
 }
 
+@DefaultImplementation(impl = TypeSpecificityComparator.NONE::class)
 interface TypeSpecificityComparator {
     fun isDefinitelyLessSpecific(specific: KotlinType, general: KotlinType): Boolean
 
