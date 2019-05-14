@@ -62,10 +62,19 @@ open class NpmProject(
      */
     internal fun resolve(name: String, context: File = nodeWorkDir): File? =
         if (name.startsWith("/")) resolve(name.removePrefix("/"), File("/"))
-        else resolveAsFile(context.resolve(name))
-            ?: resolveAsDirectory(context.resolve(name))
+        else resolveAsRelative("./", name, context)
+            ?: resolveAsRelative("/", name, context)
+            ?: resolveAsRelative("../", name, context)
             ?: resolveInNodeModulesDir(name, nodeModulesDir)
             ?: if (searchInParents) project.parent?.let { NpmProject[it].resolve(name) } else null
+
+    private fun resolveAsRelative(prefix: String, name: String, context: File): File? {
+        if (!name.startsWith(prefix)) return null
+
+        val relative = context.resolve(name.removePrefix(prefix))
+        return resolveAsFile(relative)
+            ?: resolveAsDirectory(relative)
+    }
 
     private fun resolveInNodeModulesDir(name: String, nodeModulesDir: File): File? {
         return resolveAsFile(nodeModulesDir.resolve(name))
