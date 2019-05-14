@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.backend.common.descriptors.WrappedFieldDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedVariableDescriptor
 import org.jetbrains.kotlin.backend.common.lower.replaceThisByStaticReference
 import org.jetbrains.kotlin.backend.common.phaser.makeIrFilePhase
+import org.jetbrains.kotlin.backend.jvm.codegen.isJvmInterface
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -66,26 +67,25 @@ private class MoveCompanionObjectFieldsLowering(val context: CommonBackendContex
         val companion = irClass.declarations.find {
             it is IrClass && it.isCompanion
         } as IrClass? ?: return
-        if ((irClass.isInterface || irClass.isAnnotationClass) && !companion.allFieldsAreJvmField()) return
-        companion.declarations.forEach {
-            when (it) {
-                is IrProperty -> {
-                    val newField = movePropertyFieldToStaticParent(it, companion, irClass, fieldReplacementMap)
-                    if (newField != null) irClass.declarations.add(newField)
-                }
-                is IrAnonymousInitializer -> {
-                    val newInitializer = moveAnonymousInitializerToStaticParent(it, companion, irClass)
-                    irClass.declarations.add(newInitializer)
-                }
-                else -> Unit
+        companion.declarations.mapNotNullTo(irClass.declarations) {
+            when {
+                it is IrProperty && shouldMoveProperty(irClass, it) ->
+                    movePropertyFieldToStaticParent(it, companion, irClass, fieldReplacementMap)
+                it is IrAnonymousInitializer ->
+                    moveAnonymousInitializerToStaticParent(it, companion, irClass)
+                else -> null
             }
         }
         companion.declarations.removeAll { it is IrAnonymousInitializer }
     }
 
-    private fun IrClass.allFieldsAreJvmField() =
-        declarations.filterIsInstance<IrProperty>()
-            .mapNotNull { it.backingField }.all { it.hasAnnotation(JVM_FIELD_ANNOTATION_FQ_NAME) }
+    // Properties in companions are always copied into their declaration parents except for interfaces, which can only host
+    // public static final fields. Only constants and values annotated with @JvmField are copied into interfaces. See:
+    // https://kotlinlang.org/docs/reference/java-to-kotlin-interop.html#static-fields
+    //
+    // Note that lateinit properties (mentioned in the documentation) are implicitly non-final and cannot be copied into a parent interface.
+    private fun shouldMoveProperty(irClass: IrClass, irProperty: IrProperty) =
+        !irClass.isJvmInterface || irProperty.isConst || irProperty.backingField?.hasAnnotation(JVM_FIELD_ANNOTATION_FQ_NAME) == true
 
     private fun movePropertyFieldToStaticParent(
         irProperty: IrProperty,
