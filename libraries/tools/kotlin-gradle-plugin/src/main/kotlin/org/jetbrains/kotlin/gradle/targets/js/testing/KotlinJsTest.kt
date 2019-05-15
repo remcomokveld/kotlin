@@ -12,6 +12,7 @@ import org.gradle.api.tasks.SkipWhenEmpty
 import org.gradle.process.internal.DefaultProcessForkOptions
 import org.gradle.util.ConfigureUtil
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesTestExecutionSpec
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJsCompilation
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
 import org.jetbrains.kotlin.gradle.targets.js.npm.*
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolver
@@ -31,27 +32,36 @@ open class KotlinJsTest : KotlinTest(), RequiresNpmDependencies {
     @Input
     var debug: Boolean = false
 
+    @Internal
+    override lateinit var compilation: KotlinJsCompilation
+
+    val compilationId: String
+        @Input get() = compilation.let {
+            val target = it.target
+            target.project.path + "@" + target.name + ":" + it.compilationName
+        }
+
     @Input
     var nodeModulesToLoad: MutableList<String> = mutableListOf()
 
     override val requiredNpmDependencies: Collection<RequiredKotlinJsDependency>
         get() = testFramework!!.requiredNpmDependencies
 
-    fun useNodeJs(body: KotlinNodeJsTestRunner.() -> Unit) = use(KotlinNodeJsTestRunner(project), body)
+    fun useNodeJs(body: KotlinNodeJsTestRunner.() -> Unit) = use(KotlinNodeJsTestRunner(compilation!!), body)
     fun useNodeJs(fn: Closure<*>) {
         useNodeJs {
             ConfigureUtil.configure(fn, this)
         }
     }
 
-    fun useMocha(body: KotlinMocha.() -> Unit) = use(KotlinMocha(project), body)
+    fun useMocha(body: KotlinMocha.() -> Unit) = use(KotlinMocha(compilation!!), body)
     fun useMocha(fn: Closure<*>) {
         useMocha {
             ConfigureUtil.configure(fn, this)
         }
     }
 
-    fun useKarma(body: KotlinKarma.() -> Unit) = use(KotlinKarma(project), body)
+    fun useKarma(body: KotlinKarma.() -> Unit) = use(KotlinKarma(compilation!!), body)
     fun useKarma(fn: Closure<*>) {
         useKarma {
             ConfigureUtil.configure(fn, this)
@@ -80,7 +90,7 @@ open class KotlinJsTest : KotlinTest(), RequiresNpmDependencies {
 
         NpmResolver.resolve(project)
 
-        forkOptions.workingDir = NpmProject[project].nodeWorkDir
+        forkOptions.workingDir = compilation!!.npmProject.dir
         forkOptions.executable = NodeJsPlugin.apply(project).root.environment.nodeExecutable
 
         val nodeJsArgs = mutableListOf<String>()

@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.gradle.targets.js.npm
 
+import com.google.gson.Gson
 import org.gradle.api.Project
 
 interface NpmApi {
@@ -26,15 +27,11 @@ interface NpmApi {
     @Suppress("EXPOSED_PARAMETER_TYPE")
     fun hookRootPackage(
         rootProject: Project,
-        rootPackageJson: PackageJson,
-        allWorkspaces: Collection<NpmResolver.NpmPackage>
+        allWorkspaces: Collection<NpmResolver.NpmPackage>,
+        gson: Gson
     ): Boolean = false
 
     fun cleanProject(project: Project) {
-        val npmProject = project.npmProject
-
-        npmProject.nodeModulesDir.deleteRecursively()
-        npmProject.packageJsonFile.delete()
     }
 
     companion object {

@@ -7,7 +7,7 @@ package org.jetbrains.kotlin.gradle.targets.js.npm
 
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Dependency
-import org.gradle.api.artifacts.ExternalModuleDependency
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJsCompilation
 
 class NpmPackages {
     val webpack = NpmPackageVersion("webpack", "4.29.6")
@@ -47,10 +47,11 @@ interface RequiredKotlinJsDependency {
 }
 
 data class NpmPackageVersion(val name: String, var version: String) : RequiredKotlinJsDependency {
-    override fun createDependency(project: Project) = NpmDependency(project, null, name, version)
+    override fun createDependency(project: Project): Dependency =
+        NpmDependency(project, null, name, version)
 }
 
-data class KotlinGradleNpmPackage(val simpleModuleName: String): RequiredKotlinJsDependency {
+data class KotlinGradleNpmPackage(val simpleModuleName: String) : RequiredKotlinJsDependency {
     override fun createDependency(project: Project): Dependency =
         project.dependencies.create("org.jetbrains.kotlin:kotlin-$simpleModuleName")
 }

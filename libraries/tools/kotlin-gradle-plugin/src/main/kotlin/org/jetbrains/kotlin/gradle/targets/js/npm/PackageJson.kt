@@ -5,6 +5,10 @@
 
 package org.jetbrains.kotlin.gradle.targets.js.npm
 
+import com.google.gson.Gson
+import org.jetbrains.kotlin.gradle.internal.ensureParentDirsCreated
+import java.io.File
+
 class PackageJson(
     var name: String,
     var version: String
@@ -40,5 +44,12 @@ class PackageJson(
 
     data class ScopedName(val scope: String?, val name: String) {
         override fun toString() = if (scope == null) name else "@$scope/$name"
+    }
+
+    fun saveTo(packageJsonFile: File, gson: Gson) {
+        packageJsonFile.ensureParentDirsCreated()
+        packageJsonFile.writer().use {
+            gson.toJson(this, it)
+        }
     }
 }

@@ -5,6 +5,9 @@
 
 package org.jetbrains.kotlin.gradle.targets.js.npm
 
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJsCompilation
+
 interface RequiresNpmDependencies {
+    val compilation: KotlinJsCompilation
     val requiredNpmDependencies: Collection<RequiredKotlinJsDependency>
 }

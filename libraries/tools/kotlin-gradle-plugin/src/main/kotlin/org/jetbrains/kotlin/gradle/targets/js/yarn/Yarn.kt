@@ -5,9 +5,11 @@
 
 package org.jetbrains.kotlin.gradle.targets.js.yarn
 
+import com.google.gson.Gson
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.internal.execWithProgress
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.nodeJs
 import org.jetbrains.kotlin.gradle.targets.js.npm.*
 import java.io.File
 
@@ -16,24 +18,22 @@ object Yarn : NpmApi {
         YarnPlugin.apply(project).executeSetup()
     }
 
-    val Project.packageJsonHashFile: File
-        get() = buildDir.resolve("package.json.hash")
+    val NpmProject.packageJsonHashFile: File
+        get() = dir.resolve("package.json.hash")
 
     fun yarnExec(
         project: Project,
+        dir: File,
         description: String,
-        vararg args: String,
-        npmProject: NpmProject = NpmProject[project]
+        vararg args: String
     ) {
         val nodeJsEnv = NodeJsPlugin.apply(project).root.environment
         val yarnEnv = YarnPlugin.apply(project).environment
 
-        val nodeWorkDir = npmProject.nodeWorkDir
-
         project.execWithProgress(description) { exec ->
             exec.executable = nodeJsEnv.nodeExecutable
             exec.args = listOf(yarnEnv.home.resolve("bin/yarn.js").absolutePath) + args
-            exec.workingDir = nodeWorkDir
+            exec.workingDir = dir
         }
 
     }
@@ -83,33 +83,35 @@ object Yarn : NpmApi {
     override fun resolveProject(npmPackage: NpmResolver.NpmPackage) {
         val project = npmPackage.project
         if (!project.yarn.useWorkspaces) {
-            YarnAvoidance(project).updateIfNeeded {
-                yarnExec(project, NpmApi.resolveOperationDescription("yarn for ${project.path}"))
-                yarnLockReadTransitiveDependencies(NpmProject[project].nodeWorkDir, npmPackage.npmDependencies)
+            YarnAvoidance(npmPackage.npmProject).updateIfNeeded {
+                yarnExec(project, npmPackage.npmProject.dir, NpmApi.resolveOperationDescription("yarn for ${project.path}"))
+                yarnLockReadTransitiveDependencies(npmPackage.npmProject.dir, npmPackage.npmDependencies)
             }
         }
     }
 
     @Suppress("EXPOSED_PARAMETER_TYPE")
-    override fun hookRootPackage(
-        rootProject: Project,
-        rootPackageJson: PackageJson,
-        allWorkspaces: Collection<NpmResolver.NpmPackage>
-    ): Boolean {
+    override fun hookRootPackage(rootProject: Project, allWorkspaces: Collection<NpmResolver.NpmPackage>, gson: Gson): Boolean {
         if (rootProject.yarn.useWorkspaces) {
+            val nodeJsWorldDir = rootProject.nodeJs.root.nodeJsWorldDir
+
+            val rootPackageJson = PackageJson(rootProject.name, rootProject.version.toString())
             rootPackageJson.private = true
             rootPackageJson.workspaces = allWorkspaces
                 .filter { it.project != rootProject }
-                .map { it.project.npmProject.nodeWorkDir.relativeTo(rootProject.npmProject.nodeWorkDir).path }
+                .map { it.npmProject.dir.relativeTo(nodeJsWorldDir).path }
+
+            rootProject.nodeJs.packageJsonHandlers.forEach {
+                it(rootPackageJson)
+            }
+
+            rootPackageJson.saveTo(nodeJsWorldDir.resolve(NpmProject.PACKAGE_JSON), gson)
 
             return true
         }
 
         return false
     }
-
-//    override fun shouldHoistGradleNodeModules(project: Project): Boolean =
-//        project.rootProject.yarn.useWorkspaces
 
     @Suppress("EXPOSED_PARAMETER_TYPE")
     override fun resolveRootProject(
@@ -128,21 +130,17 @@ object Yarn : NpmApi {
         subprojects: MutableList<NpmResolver.NpmPackage>
     ) {
         val upToDateChecks = subprojects.map {
-            YarnAvoidance(it.project)
+            YarnAvoidance(it.npmProject)
         }
 
         if (upToDateChecks.all { it.upToDate }) return
 
-        yarnExec(rootProject, NpmApi.resolveOperationDescription("yarn"))
-        yarnLockReadTransitiveDependencies(NpmProject[rootProject].nodeWorkDir, subprojects.flatMap { it.npmDependencies })
+        val nodeJsWorldDir = rootProject.nodeJs.root.nodeJsWorldDir
+        yarnExec(rootProject, nodeJsWorldDir, NpmApi.resolveOperationDescription("yarn"))
+        yarnLockReadTransitiveDependencies(nodeJsWorldDir, subprojects.flatMap { it.npmDependencies })
 
         upToDateChecks.forEach {
             it.commit()
         }
-    }
-
-    override fun cleanProject(project: Project) {
-        super.cleanProject(project)
-        project.packageJsonHashFile.delete()
     }
 }

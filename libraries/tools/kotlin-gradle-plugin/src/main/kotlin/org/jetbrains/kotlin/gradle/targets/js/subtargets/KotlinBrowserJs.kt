@@ -39,13 +39,12 @@ class KotlinBrowserJs(target: KotlinJsTarget) :
 
     override fun configureRun(compilation: KotlinJsCompilation) {
         val project = compilation.target.project
-        val npmProject = project.npmProject
 
         project.createOrRegisterTask<KotlinWebpack>(disambiguateCamelCased("webpack")) {
             val compileKotlinTask = compilation.compileKotlinTask
             it.dependsOn(target.project.nodeJs.root.npmResolveTask, compileKotlinTask)
 
-            it.entry = npmProject.compileOutput(compileKotlinTask)
+            it.compilation = compilation
 
             project.tasks.getByName(LifecycleBasePlugin.ASSEMBLE_TASK_NAME).dependsOn(it)
         }
@@ -59,7 +58,7 @@ class KotlinBrowserJs(target: KotlinJsTarget) :
             )
 
             it.bin = "webpack-dev-server"
-            it.entry = npmProject.compileOutput(compileKotlinTask)
+            it.compilation = compilation
 
             it.devServer = KotlinWebpackConfigWriter.DevServer(
                 open = true,

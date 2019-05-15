@@ -7,41 +7,36 @@ package org.jetbrains.kotlin.gradle.targets.js.npm
 
 import org.gradle.api.Project
 import org.gradle.process.ExecSpec
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJsCompilation
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.nodeJs
-import org.jetbrains.kotlin.gradle.tasks.Kotlin2JsCompile
 import java.io.File
 
 open class NpmProject(
-    val project: Project,
-    val nodeWorkDir: File,
-    val searchInParents: Boolean
+    val compilation: KotlinJsCompilation,
+    val name: String,
+    val dir: File
 ) {
+    val project: Project
+        get() = compilation.target.project
+
     val nodeModulesDir
-        get() = nodeWorkDir.resolve(NODE_MODULES)
+        get() = dir.resolve(NODE_MODULES)
 
     val packageJsonFile: File
-        get() = nodeWorkDir.resolve(PACKAGE_JSON)
+        get() = dir.resolve(PACKAGE_JSON)
 
-    open val compileOutputCopyDest: File?
+    open val compileOutputCopyDest: File
         get() = nodeModulesDir
 
-    private val modules = object : NpmProjectModules(nodeWorkDir, nodeModulesDir) {
-        override val parent get() = if (searchInParents) parentModules else null
+    private val modules = object : NpmProjectModules(dir, nodeModulesDir) {
+        override val parent get() = rootNodeModules
     }
 
-    private val parentModules: NpmProjectModules?
-        get() = project.parent?.npmProject?.modules
-
-    val gradleNodeModulesDir: File
-        get() = project.rootProject.npmProject.nodeModulesDir
-
-    open fun compileOutput(compilationTask: Kotlin2JsCompile): File {
-        return compileOutputCopyDest?.resolve(compilationTask.outputFile.name) ?: compilationTask.outputFile
-    }
+    private val rootNodeModules: NpmProjectModules?
+        get() = NpmProjectModules(project.nodeJs.root.nodeJsWorldDir)
 
     fun useTool(exec: ExecSpec, tool: String, vararg args: String) {
-        exec.workingDir = nodeWorkDir
+        exec.workingDir = dir
         exec.executable = project.nodeJs.root.environment.nodeExecutable
         exec.args = listOf(require(tool)) + args
     }
@@ -60,19 +55,24 @@ open class NpmProject(
      */
     internal fun resolve(name: String): File? = modules.resolve(name)
 
-    override fun toString() = "NpmProject($nodeWorkDir)"
+    override fun toString() = "NpmProject($dir)"
 
     companion object {
         const val PACKAGE_JSON = "package.json"
         const val NODE_MODULES = "node_modules"
-
-        operator fun get(project: Project): NpmProject {
-            val nodeJsRootExtension = NodeJsPlugin.apply(project)
-
-            return nodeJsRootExtension.root.layout.newNpmProject(project)
-        }
     }
 }
 
-val Project.npmProject
-    get() = NpmProject[this]
+val KotlinJsCompilation.npmProject: NpmProject
+    get() {
+        val project = target.project
+        val nodeJsWorldDir = project.nodeJs.root.nodeJsWorldDir
+
+        var name = project.path.removePrefix(":").replace(":", "-")
+        if (target.name.isNotEmpty() && target.name.toLowerCase() != "js") name += "-" + target.name
+        name += "-" + compilationName
+
+        val dir = nodeJsWorldDir.resolve("packages").resolve(name)
+
+        return NpmProject(this, name, dir)
+    }
