@@ -112,7 +112,7 @@ class LibraryWriterImpl(
     }
 }
 
-internal fun buildLibrary(
+fun buildLibrary(
         natives: List<String>,
         included: List<String>,
         linkDependencies: List<KonanLibrary>,

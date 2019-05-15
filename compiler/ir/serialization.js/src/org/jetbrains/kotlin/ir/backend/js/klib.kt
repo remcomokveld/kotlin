@@ -7,31 +7,33 @@ package org.jetbrains.kotlin.ir.backend.js
 
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.LoggingContext
+import org.jetbrains.kotlin.backend.common.serialization.DescriptorTable
+import org.jetbrains.kotlin.backend.konan.library.impl.buildLibrary
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.builtins.functions.functionInterfacePackageFragmentProvider
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.config.languageVersionSettings
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.impl.CompositePackageFragmentProvider
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.incremental.components.LookupTracker
-import org.jetbrains.kotlin.backend.common.serialization.DescriptorTable
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsDeclarationTable
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrModuleSerializer
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.newJsDescriptorUniqId
-import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.JsKlibMetadataModuleDescriptor
-import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.JsKlibMetadataSerializationUtil
-import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.JsKlibMetadataVersion
-import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.createJsKlibMetadataPackageFragmentProvider
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.*
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS
 import org.jetbrains.kotlin.js.analyzer.JsAnalysisResult
+import org.jetbrains.kotlin.konan.KonanAbiVersion
+import org.jetbrains.kotlin.konan.KonanVersionImpl
+import org.jetbrains.kotlin.konan.MetaVersion
+import org.jetbrains.kotlin.konan.library.KonanLibraryVersioning
+import org.jetbrains.kotlin.konan.target.KonanTarget
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.progress.ProgressIndicatorAndCompilationCanceledStatus
 import org.jetbrains.kotlin.psi.KtFile
@@ -44,9 +46,6 @@ import org.jetbrains.kotlin.resolve.CompilerDeserializationConfiguration
 import org.jetbrains.kotlin.storage.LockBasedStorageManager
 import org.jetbrains.kotlin.utils.DFS
 import java.io.File
-import java.nio.file.Files.move
-import java.nio.file.Paths
-import java.nio.file.StandardCopyOption
 
 data class KlibModuleRef(
     val moduleName: String,
@@ -287,29 +286,34 @@ fun serializeModuleIntoKlib(
 
     val moduleDescription =
         JsKlibMetadataModuleDescriptor(moduleName, dependencies.map { it.moduleName }, moduleFragment.descriptor)
-    val serializedData = serializer.serializeMetadata(
+    val linkData = serializer.serializeMetadata(
         bindingContext,
         moduleDescription,
         languageVersionSettings,
-        metadataVersion
+        metadataVersion,
+        serializedIr
     ) { declarationDescriptor ->
         val index = declarationTable.descriptorTable.get(declarationDescriptor)
         index?.let { newJsDescriptorUniqId(it) }
     }
 
-    val klibDir = File(klibPath).also {
-        it.deleteRecursively()
-        it.mkdirs()
-    }
+    val abiVersion = KonanAbiVersion.CURRENT
+    val compilerVersion = KonanVersionImpl(MetaVersion.DEV, 1, 3, 0, -1)
+    val libraryVersion = "JSIR"
 
-    val moduleFile = File(klibDir, moduleHeaderFileName)
-    moduleFile.writeBytes(serializedIr.module)
+    val versions = KonanLibraryVersioning(abiVersion = abiVersion, libraryVersion = libraryVersion, compilerVersion = compilerVersion)
 
-    val irDeclarationDir = File(klibDir, declarationsDirName).also { it.mkdir() }
-    val irCombinedFile = File(irDeclarationDir, "irCombined.knd")
-    move(Paths.get(serializedIr.combinedDeclarationFilePath), Paths.get(irCombinedFile.path), StandardCopyOption.REPLACE_EXISTING)
-
-    File(klibDir, "${moduleDescription.name}.${JsKlibMetadataSerializationUtil.CLASS_METADATA_FILE_EXTENSION}").also {
-        it.writeBytes(serializedData.asByteArray())
-    }
+    buildLibrary(
+        natives = emptyList(),
+        included = emptyList(),
+        linkDependencies = emptyList(),
+        linkData = linkData,
+        dataFlowGraph = null, // TODO: ???
+        manifestProperties = null, // TODO: ???
+        moduleName = moduleName,
+        nopack = false,
+        output = klibPath,
+        target = KonanTarget.LINUX_ARM64, // TODO,
+        versions = versions
+    )
 }
