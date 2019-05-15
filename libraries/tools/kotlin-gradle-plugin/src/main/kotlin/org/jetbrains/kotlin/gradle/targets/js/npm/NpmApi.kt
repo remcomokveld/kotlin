@@ -30,8 +30,6 @@ interface NpmApi {
         allWorkspaces: Collection<NpmResolver.NpmPackage>
     ): Boolean = false
 
-    open fun shouldHoistGradleNodeModules(project: Project) = false
-
     fun cleanProject(project: Project) {
         val npmProject = project.npmProject
 
