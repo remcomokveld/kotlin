@@ -70,7 +70,7 @@ abstract class AbstractKotlinCompileTool<T : CommonToolArguments>
     TaskWithLocalState {
 
     @InputFiles
-    @PathSensitive(PathSensitivity.RELATIVE)
+    @Classpath
     override fun getSource() = super.getSource()
 
     @get:Input
